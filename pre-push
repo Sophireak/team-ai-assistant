@@ -1,0 +1,39 @@
+#!/bin/sh
+# ──────────────────────────────────────────────────────────────────
+#  Team AI Assistant — Pre-Push Hook
+#  This file is managed by the team-ai-assistant package.
+#  Do not edit manually — update via the package instead.
+#
+#  Activated with: git config core.hooksPath .githooks
+# ──────────────────────────────────────────────────────────────────
+
+PHP=$(command -v php || echo "php")
+
+if [ ! -f "artisan" ]; then
+  echo "⚠  artisan not found. Skipping pre-push checks."
+  exit 0
+fi
+
+# Check if auto-fix is enabled in config
+AUTO_FIX=$(php -r "
+  define('LARAVEL_START', microtime(true));
+  require 'vendor/autoload.php';
+  \$app = require 'bootstrap/app.php';
+  \$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+  echo config('team-ai-assistant.auto_fix', true) ? '--fix' : '';
+" 2>/dev/null)
+
+echo ""
+$PHP artisan ai:check $AUTO_FIX
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "  Push blocked by Team AI Assistant."
+  echo "  Fix the issues above, then push again."
+  echo "  Emergency bypass: git push --no-verify"
+  echo ""
+  exit 1
+fi
+
+exit 0
